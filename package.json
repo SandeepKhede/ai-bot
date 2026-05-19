@@ -1,0 +1,12 @@
+{
+  "name": "whatsapp-saas",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter @wabot/api dev",
+    "dev:web": "pnpm --filter @wabot/web dev",
+    "build": "pnpm -r build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down"
+  }
+}

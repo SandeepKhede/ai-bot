@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id              String   @id @default(cuid())
+  name            String
+  whatsappNumber  String   @unique
+  waPhoneNumberId String   @unique
+  waAccessToken   String
+  address         String?
+  locationLink    String?
+  businessHours   Json
+  plan            Plan     @default(STARTER)
+  botActive       Boolean  @default(true)
+  humanHandoff    Boolean  @default(false)
+  monthlyAiCalls  Int      @default(0)
+  aiCallsResetAt  DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  customers    Customer[]
+  menuItems    MenuItem[]
+  faqs         Faq[]
+  reservations Reservation[]
+  sessions     Session[]
+}
+
+model Customer {
+  id             String   @id @default(cuid())
+  restaurantId   String
+  whatsappNumber String
+  name           String?
+  label          String?
+  visitCount     Int      @default(1)
+  lastSeen       DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
+  reservations Reservation[]
+
+  @@unique([restaurantId, whatsappNumber])
+}
+
+model MenuItem {
+  id           String  @id @default(cuid())
+  restaurantId String
+  category     String
+  name         String
+  pricePaise   Int
+  description  String?
+  available    Boolean @default(true)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+model Faq {
+  id           String   @id @default(cuid())
+  restaurantId String
+  question     String
+  answer       String
+  keywords     String[]
+  priority     Int      @default(0)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+model Reservation {
+  id           String            @id @default(cuid())
+  restaurantId String
+  customerId   String
+  date         String
+  timeSlot     String
+  guests       Int
+  status       ReservationStatus @default(PENDING)
+  createdAt    DateTime          @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+}
+
+model Session {
+  id            String   @id @default(cuid())
+  restaurantId  String
+  customerPhone String
+  state         String
+  expiresAt     DateTime
+  updatedAt     DateTime @updatedAt
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+
+  @@unique([restaurantId, customerPhone])
+}
+
+model MessageLog {
+  id            String   @id @default(cuid())
+  restaurantId  String
+  customerPhone String
+  direction     String
+  content       String
+  resolvedBy    String?
+  createdAt     DateTime @default(now())
+}
+
+enum Plan {
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}

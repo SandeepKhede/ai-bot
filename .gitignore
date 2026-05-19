@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Prisma generated
+packages/db/src/generated/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Claude Code — include settings, exclude local overrides
+.claude/settings.local.json
+
+# Keep skill files and CLAUDE.md
+!.claude/
+!.claude/skills/
+!CLAUDE.md
