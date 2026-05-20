@@ -13,6 +13,9 @@ model Restaurant {
   whatsappNumber  String   @unique
   waPhoneNumberId String   @unique
   waAccessToken   String
+  adminEmail      String?  @unique
+  adminPassword   String?
+  setupComplete   Boolean  @default(false)
   address         String?
   locationLink    String?
   businessHours   Json

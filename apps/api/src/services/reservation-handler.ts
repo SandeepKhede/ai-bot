@@ -1,6 +1,7 @@
 import { prisma } from '@wabot/db'
 import { sendTextMessage } from '@wabot/whatsapp'
 import { getSession, setSession, clearSession, ReservationSession } from './session'
+import { logMessage } from './logger'
 
 type Restaurant = {
   id: string
@@ -16,6 +17,13 @@ async function send(restaurant: Restaurant, to: string, body: string) {
     body,
     phoneNumberId: restaurant.waPhoneNumberId,
     accessToken: restaurant.waAccessToken,
+  })
+  await logMessage({
+    restaurantId: restaurant.id,
+    customerPhone: to,
+    direction: 'outbound',
+    content: body,
+    resolvedBy: 'session',
   })
 }
 
