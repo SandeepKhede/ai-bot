@@ -14,6 +14,7 @@
     "@wabot/db": "workspace:*",
     "@wabot/whatsapp": "workspace:*",
     "axios": "^1.7.2",
+    "bullmq": "^5.76.10",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
     "ioredis": "^5.10.1"

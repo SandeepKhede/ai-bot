@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { extractIncomingMessage } from '@wabot/whatsapp'
-import { routeMessage } from '../services/message-router'
+import { messageQueue } from '../queue/message-queue'
 
 export async function webhookRoutes(app: FastifyInstance) {
   app.get('/', async (req, reply) => {
@@ -19,11 +19,11 @@ export async function webhookRoutes(app: FastifyInstance) {
   app.post('/', async (req, reply) => {
     const msg = extractIncomingMessage(req.body)
     if (msg) {
-      setImmediate(() =>
-        routeMessage(msg.phoneNumberId, msg.from, msg.text).catch(err =>
-          app.log.error(err, 'routeMessage failed')
-        )
-      )
+      await messageQueue.add('process', {
+        phoneNumberId: msg.phoneNumberId,
+        from: msg.from,
+        text: msg.text,
+      })
     }
     return reply.status(200).send('OK')
   })
