@@ -9,8 +9,10 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: session.user.id },
-    select: { name: true },
+    select: { name: true, setupComplete: true },
   })
+
+  if (!restaurant?.setupComplete) redirect('/setup')
 
   return (
     <div className="flex min-h-screen bg-gray-50">

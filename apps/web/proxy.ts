@@ -9,14 +9,17 @@ export function proxy(request: NextRequest) {
   const isLoggedIn = !!session
   const { pathname } = request.nextUrl
 
-  if (pathname.startsWith('/dashboard') && !isLoggedIn) {
+  // Protect dashboard and setup — redirect to login if not logged in
+  if ((pathname.startsWith('/dashboard') || pathname.startsWith('/setup')) && !isLoggedIn) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-  if (pathname === '/login' && isLoggedIn) {
+
+  // Redirect logged-in users away from login/signup to dashboard
+  if ((pathname === '/login' || pathname === '/signup') && isLoggedIn) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/dashboard/:path*', '/setup/:path*', '/setup', '/login', '/signup'],
 }
