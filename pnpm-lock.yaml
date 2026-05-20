@@ -65,6 +65,9 @@ importers:
       '@wabot/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@wabot/whatsapp':
+        specifier: workspace:*
+        version: link:../../packages/whatsapp
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3

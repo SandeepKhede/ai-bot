@@ -35,6 +35,31 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
   )
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [handoffLoading, setHandoffLoading] = useState(false)
+  const [handoffMsg, setHandoffMsg] = useState<string | null>(null)
+
+  async function toggleHandoff() {
+    const next = !form.humanHandoff
+    setHandoffLoading(true)
+    setHandoffMsg(null)
+    const res = await fetch('/api/settings/handoff', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: next }),
+    })
+    setHandoffLoading(false)
+    if (res.ok) {
+      const data = await res.json()
+      setForm(f => ({ ...f, humanHandoff: next }))
+      const label = next ? 'Handoff ON' : 'Bot resumed'
+      const notif = data.notified > 0 ? ` — ${data.notified} customer${data.notified > 1 ? 's' : ''} notified` : ''
+      setHandoffMsg(`${label}${notif}`)
+      setTimeout(() => setHandoffMsg(null), 4000)
+      router.refresh()
+    } else {
+      setHandoffMsg('Failed to update — try again')
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -42,7 +67,7 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
     await fetch('/api/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, businessHours: hours, restaurantId }),
+      body: JSON.stringify({ name: form.name, address: form.address, locationLink: form.locationLink, whatsappNumber: form.whatsappNumber, botActive: form.botActive, businessHours: hours, restaurantId }),
     })
     setSaving(false)
     setSaved(true)
@@ -112,16 +137,25 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.botActive ? 'translate-x-5' : ''}`} />
           </button>
         </label>
-        <label className="flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-medium text-gray-700">Human Handoff</div>
             <div className="text-xs text-gray-400">Bot goes silent, you reply manually from your phone</div>
+            {handoffMsg && (
+              <div className={`text-xs mt-1 font-medium ${handoffMsg.startsWith('Failed') ? 'text-red-500' : form.humanHandoff ? 'text-orange-600' : 'text-green-600'}`}>
+                {handoffMsg}
+              </div>
+            )}
           </div>
-          <button type="button" onClick={() => setForm({ ...form, humanHandoff: !form.humanHandoff })}
-            className={`relative w-11 h-6 rounded-full transition ${form.humanHandoff ? 'bg-orange-500' : 'bg-gray-300'}`}>
+          <button
+            type="button"
+            disabled={handoffLoading}
+            onClick={toggleHandoff}
+            className={`relative w-11 h-6 rounded-full transition disabled:opacity-50 ${form.humanHandoff ? 'bg-orange-500' : 'bg-gray-300'}`}
+          >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.humanHandoff ? 'translate-x-5' : ''}`} />
           </button>
-        </label>
+        </div>
       </div>
 
       {/* WhatsApp Info (read-only) */}
