@@ -19,6 +19,16 @@ const AI_CALL_LIMITS: Record<string, number> = {
   PRO: 500,
 }
 
+const MENU_KEYWORDS = ['menu', 'dish', 'item', 'price', 'cost', 'rate', 'eat',
+  'paneer', 'chicken', 'veg', 'starter', 'dessert', 'drink', 'beverage',
+  'special', 'available', 'order', 'ingredient', 'contain', 'made', 'spice',
+  'spicy', 'sweet', 'sour', 'portion', 'serving', 'half', 'full', 'combo']
+
+function isFoodRelated(message: string): boolean {
+  const m = message.toLowerCase()
+  return MENU_KEYWORDS.some(k => m.includes(k))
+}
+
 export async function askAI(
   restaurantId: string,
   customerMessage: string
@@ -33,17 +43,23 @@ export async function askAI(
     return `I'm not sure about that — please call us or ask our staff directly! 😊`
   }
 
-  const menuItems = await prisma.menuItem.findMany({
-    where: { restaurantId, available: true },
-    select: { category: true, name: true, pricePaise: true, description: true },
-    take: 60,
-  })
-
-  const menuText = menuItems
-    .map(i => `${i.category} | ${i.name} | ₹${i.pricePaise / 100}${i.description ? ` | ${i.description}` : ''}`)
-    .join('\n')
-
   const hours = JSON.stringify(restaurant.businessHours)
+
+  // Only fetch and inject menu when the question is food-related
+  let menuSection = ''
+  if (isFoodRelated(customerMessage)) {
+    const menuItems = await prisma.menuItem.findMany({
+      where: { restaurantId, available: true },
+      select: { category: true, name: true, pricePaise: true, description: true },
+      take: 60,
+    })
+    if (menuItems.length) {
+      const menuText = menuItems
+        .map(i => `${i.category} | ${i.name} | ₹${i.pricePaise / 100}${i.description ? ` | ${i.description}` : ''}`)
+        .join('\n')
+      menuSection = `\n\nMENU:\n${menuText}`
+    }
+  }
 
   const systemPrompt = `You are a friendly WhatsApp assistant for ${restaurant.name}, a restaurant in India.
 Answer customer questions based ONLY on the information below.
@@ -54,10 +70,7 @@ Do not use markdown — plain text only. You may use *bold* sparingly.
 RESTAURANT INFO:
 Name: ${restaurant.name}
 Address: ${restaurant.address ?? 'Not provided'}
-Timings: ${hours}
-
-MENU:
-${menuText || 'Menu not available'}`
+Timings: ${hours}${menuSection}`
 
   const response = await getClient().chat.completions.create({
     model: 'gpt-4o-mini',
