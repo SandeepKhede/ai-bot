@@ -15,6 +15,7 @@ location, and reservations — powered by a rule-based engine + GPT-4o-mini fall
 | Admin portal | Next.js 16 (App Router) |
 | Database | PostgreSQL 15 via Prisma ORM |
 | Sessions | Redis (ioredis) |
+| Queue | BullMQ (backed by Redis) |
 | AI | OpenAI GPT-4o-mini |
 | WhatsApp | Meta Cloud API (free) |
 | Monorepo | pnpm workspaces |
@@ -25,12 +26,19 @@ location, and reservations — powered by a rule-based engine + GPT-4o-mini fall
 
 ```
 ├── apps/
-│   ├── api/          # Fastify backend — webhook + message routing
-│   └── web/          # Next.js admin portal
+│   ├── api/                    # Fastify backend — webhook + message routing
+│   │   └── src/
+│   │       ├── queue/          # BullMQ queue + worker
+│   │       ├── routes/         # Webhook route
+│   │       └── services/       # message-router, faq-matcher, reservation-handler, etc.
+│   └── web/                    # Next.js admin portal
+│       └── app/
+│           ├── dashboard/      # Overview, menu, FAQs, settings, reservations
+│           └── api/            # REST API routes for the portal
 ├── packages/
-│   ├── db/           # Prisma schema, migrations, seed
-│   ├── whatsapp/     # Meta Cloud API client
-│   └── ai/           # OpenAI GPT-4o-mini wrapper
+│   ├── db/                     # Prisma schema, migrations, seed
+│   ├── whatsapp/               # Meta Cloud API client
+│   └── ai/                     # OpenAI GPT-4o-mini wrapper
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
@@ -160,7 +168,7 @@ API runs on **http://localhost:3001**
 
 ```bash
 cd apps/web
-npm run dev
+pnpm run dev
 ```
 
 Portal runs on **http://localhost:3000**
@@ -229,8 +237,14 @@ Customer sends WhatsApp message
             ↓
   Meta webhook → POST /webhook
             ↓
+   messageQueue.add() → 200 OK   ← returns instantly to Meta
+            ↓
+   BullMQ worker picks up job
+   (concurrency: 10, 3 retries)
+            ↓
        routeMessage()
             ↓
+  0. Human handoff ON?            →  bot silent, owner replies manually
   1. Active reservation session?  →  continue multi-turn booking flow
   2. Reservation intent?          →  start booking flow (date → time → guests → confirm)
   3. FAQ keyword match?           →  instant answer from DB (no AI cost)
@@ -248,20 +262,33 @@ Customer sends WhatsApp message
 | Overview | `/dashboard` | Message stats, reservations today, recent activity |
 | Menu | `/dashboard/menu` | Add / toggle availability / delete items, CSV import |
 | FAQs | `/dashboard/faqs` | Keyword-triggered instant answers (no AI cost) |
-| Settings | `/dashboard/settings` | Hours, address, Google Maps link, bot toggle, human handoff |
+| Settings | `/dashboard/settings` | Hours, address, Google Maps link, bot toggle, human handoff (notifies active customers instantly) |
 | Reservations | `/dashboard/reservations` | View all bookings with status |
 
 ---
 
-## 8. Phases Completed
+## 8. Human Handoff
+
+The owner can pause the bot at any time from the **Settings → Human Handoff** toggle:
+
+- **Toggle ON** — bot goes silent immediately; customers active in the last 30 minutes receive *"Our team member will be with you shortly! 👋"*
+- **Toggle OFF** — bot resumes; same recent customers receive *"Our WhatsApp assistant is back online. How can we help? 😊"*
+
+The toggle fires instantly (no Save button needed) and shows a confirmation: `Handoff ON — 2 customers notified`.
+
+---
+
+## 9. Phases Completed
 
 | Phase | Description |
 |---|---|
 | 1 | WhatsApp webhook plumbing |
 | 2 | Database schema + FAQ engine |
 | 3 | Reservation flow + Redis sessions |
-| 4 | AI fallback (GPT-4o-mini) |
-| 5 | Full message router |
-| 6 | Admin portal (Next.js) |
+| 4 | AI fallback (GPT-4o-mini) with token optimisation |
+| 5 | Full message router (session → FAQ → structured → AI → fallback) |
+| 6 | Admin portal (Next.js) — menu, FAQs, settings, reservations |
+| 7 | Human handoff — bot pause with automatic customer notifications |
+| 8 | BullMQ message queue — reliable processing with retries and concurrency control |
 
-**Coming next:** Human handoff (Phase 7), BullMQ queue (Phase 8), Payments (Phase 9)
+**Coming next:** Payments / subscriptions (Phase 9 — Razorpay)
