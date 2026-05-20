@@ -1,0 +1,17 @@
+{
+  "name": "@wabot/ai",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@wabot/db": "workspace:*",
+    "openai": "^4.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.9",
+    "typescript": "^5.5.3"
+  }
+}

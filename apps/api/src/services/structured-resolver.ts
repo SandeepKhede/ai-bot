@@ -5,7 +5,7 @@ export type Intent = 'menu' | 'hours' | 'location' | 'reservation' | 'unknown'
 export function classifyIntent(message: string): Intent {
   const m = message.toLowerCase()
 
-  const MENU_KW      = ['menu', 'food', 'dish', 'item', 'eat', 'price', 'rate', 'cost',
+  const MENU_KW      = ['menu', 'dish', 'item', 'price', 'rate', 'cost',
                         'paneer', 'chicken', 'veg', 'non-veg', 'starter', 'dessert',
                         'drink', 'beverage', 'special', 'available', 'order']
   const HOURS_KW     = ['time', 'timing', 'open', 'close', 'hours', 'when', 'schedule']
