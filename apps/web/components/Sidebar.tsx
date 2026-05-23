@@ -5,11 +5,14 @@ import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 
 const nav = [
-  { href: '/dashboard', label: 'Overview', icon: '📊' },
-  { href: '/dashboard/menu', label: 'Menu', icon: '🍽️' },
-  { href: '/dashboard/faqs', label: 'FAQs', icon: '💬' },
-  { href: '/dashboard/reservations', label: 'Reservations', icon: '📅' },
-  { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/dashboard',              label: 'Overview',      icon: '📊' },
+  { href: '/dashboard/inbox',        label: 'Inbox',         icon: '💬' },
+  { href: '/dashboard/orders',       label: 'Orders',        icon: '🛒' },
+  { href: '/dashboard/reservations', label: 'Reservations',  icon: '📅' },
+  { href: '/dashboard/analytics',    label: 'Analytics',     icon: '📈' },
+  { href: '/dashboard/menu',         label: 'Menu',          icon: '🍽️' },
+  { href: '/dashboard/faqs',         label: 'FAQs',          icon: '🗂️' },
+  { href: '/dashboard/settings',     label: 'Settings',      icon: '⚙️' },
 ]
 
 export default function Sidebar({ restaurantName }: { restaurantName: string }) {

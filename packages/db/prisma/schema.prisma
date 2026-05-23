@@ -30,6 +30,7 @@ model Restaurant {
   menuItems    MenuItem[]
   faqs         Faq[]
   reservations Reservation[]
+  orders       Order[]
   sessions     Session[]
 }
 
@@ -45,6 +46,7 @@ model Customer {
 
   restaurant   Restaurant    @relation(fields: [restaurantId], references: [id])
   reservations Reservation[]
+  orders       Order[]
 
   @@unique([restaurantId, whatsappNumber])
 }
@@ -58,7 +60,8 @@ model MenuItem {
   description  String?
   available    Boolean @default(true)
 
-  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  restaurant  Restaurant  @relation(fields: [restaurantId], references: [id])
+  orderItems  OrderItem[]
 }
 
 model Faq {
@@ -107,6 +110,40 @@ model MessageLog {
   content       String
   resolvedBy    String?
   createdAt     DateTime @default(now())
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  restaurantId String
+  customerId   String
+  totalPaise   Int
+  status       OrderStatus @default(PENDING)
+  notes        String?
+  createdAt    DateTime    @default(now())
+
+  restaurant Restaurant  @relation(fields: [restaurantId], references: [id])
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  items      OrderItem[]
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  orderId    String
+  menuItemId String
+  name       String
+  pricePaise Int
+  quantity   Int    @default(1)
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  CANCELLED
 }
 
 enum Plan {

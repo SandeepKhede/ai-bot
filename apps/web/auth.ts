@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { authConfig } from './auth.config'
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.NEXTAUTH_SECRET,
   ...authConfig,
   providers: [
     Credentials({

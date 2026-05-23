@@ -1,21 +1,23 @@
 import { prisma } from '@wabot/db'
 
-export type Intent = 'menu' | 'hours' | 'location' | 'reservation' | 'unknown'
+export type Intent = 'menu' | 'hours' | 'location' | 'reservation' | 'order' | 'unknown'
 
 export function classifyIntent(message: string): Intent {
   const m = message.toLowerCase()
 
-  const MENU_KW      = ['menu', 'dish', 'item', 'price', 'rate', 'cost',
-                        'paneer', 'chicken', 'veg', 'non-veg', 'starter', 'dessert',
-                        'drink', 'beverage', 'special', 'available', 'order']
-  const HOURS_KW     = ['time', 'timing', 'open', 'close', 'hours', 'when', 'schedule']
-  const LOCATION_KW  = ['where', 'location', 'address', 'map', 'direction', 'find', 'reach']
-  const RESERVE_KW   = ['book', 'reserve', 'table', 'reservation', 'seat', 'booking',
-                        'visit', 'come', 'tonight', 'tomorrow', 'dinner', 'lunch']
+  const ORDER_KW    = ['order', 'i want to order', 'place order', 'want to eat', 'can i order', 'i\'d like to order']
+  const RESERVE_KW  = ['book', 'reserve', 'table', 'reservation', 'seat', 'booking',
+                       'visit', 'come', 'tonight', 'tomorrow', 'dinner', 'lunch']
+  const MENU_KW     = ['menu', 'dish', 'item', 'price', 'rate', 'cost',
+                       'paneer', 'chicken', 'veg', 'non-veg', 'starter', 'dessert',
+                       'drink', 'beverage', 'special', 'available', 'food']
+  const HOURS_KW    = ['time', 'timing', 'open', 'close', 'hours', 'when', 'schedule']
+  const LOCATION_KW = ['where', 'location', 'address', 'map', 'direction', 'find', 'reach']
 
-  if (RESERVE_KW.some(k => m.includes(k))) return 'reservation'
-  if (MENU_KW.some(k => m.includes(k)))    return 'menu'
-  if (HOURS_KW.some(k => m.includes(k)))   return 'hours'
+  if (ORDER_KW.some(k => m.includes(k)))    return 'order'
+  if (RESERVE_KW.some(k => m.includes(k)))  return 'reservation'
+  if (MENU_KW.some(k => m.includes(k)))     return 'menu'
+  if (HOURS_KW.some(k => m.includes(k)))    return 'hours'
   if (LOCATION_KW.some(k => m.includes(k))) return 'location'
   return 'unknown'
 }
