@@ -12,8 +12,11 @@ export async function PATCH(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { id, status } = await req.json()
-  if (!['CONFIRMED', 'CANCELLED', 'PENDING'].includes(status)) {
+  const { id, status, verifyUtr } = await req.json()
+
+  // verifyUtr=true: mark UTR as verified AND confirm the reservation in one step
+  const targetStatus = verifyUtr ? 'CONFIRMED' : status
+  if (!['CONFIRMED', 'CANCELLED', 'PENDING'].includes(targetStatus)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
   }
 
@@ -25,10 +28,20 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const updated = await prisma.reservation.update({ where: { id }, data: { status } })
+  const updated = await prisma.reservation.update({
+    where: { id },
+    data: {
+      status: targetStatus,
+      ...(verifyUtr ? { utrVerified: true } : {}),
+    },
+  })
 
-  // Notify customer on WhatsApp when confirmed or cancelled
-  const msgTemplate = STATUS_MESSAGES[status]
+  // Customer message — UTR verify has a richer confirmation message
+  let msgTemplate = STATUS_MESSAGES[targetStatus]
+  if (verifyUtr && targetStatus === 'CONFIRMED') {
+    msgTemplate = `✅ *Payment verified & reservation confirmed!*\n\nThank you for the advance payment. We're looking forward to hosting you!`
+  }
+
   if (msgTemplate) {
     await sendTextMessage({
       to: reservation.customer.whatsappNumber,

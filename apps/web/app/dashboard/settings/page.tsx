@@ -17,6 +17,10 @@ export default async function SettingsPage() {
       humanHandoff: true,
       whatsappNumber: true,
       waPhoneNumberId: true,
+      waAccessToken: true,
+      utrEnabled: true,
+      utrUpiId: true,
+      utrAdvancePaise: true,
     },
   })
 

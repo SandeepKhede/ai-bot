@@ -6,6 +6,7 @@ import Fastify from 'fastify'
 import helmet from '@fastify/helmet'
 import formbody from '@fastify/formbody'
 import { webhookRoutes } from './routes/webhook'
+import { payRoutes } from './routes/pay'
 import { createMessageWorker } from './queue/message-queue'
 
 const app = Fastify({ logger: true })
@@ -13,6 +14,7 @@ const app = Fastify({ logger: true })
 app.register(helmet)
 app.register(formbody)
 app.register(webhookRoutes, { prefix: '/webhook' })
+app.register(payRoutes)
 
 app.get('/health', async () => ({ status: 'ok' }))
 

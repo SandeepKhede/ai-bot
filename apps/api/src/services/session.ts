@@ -11,12 +11,13 @@ const SESSION_TTL = 60 * 30 // 30 minutes
 
 export interface ReservationSession {
   type: 'reservation'
-  stage: 'ask_date' | 'ask_time' | 'ask_guests' | 'confirm'
+  stage: 'ask_date' | 'ask_time' | 'ask_guests' | 'confirm' | 'ask_utr'
   restaurantId: string
   customerPhone: string
   date?: string
   time?: string
   guests?: number
+  reservationId?: string  // set after reservation row is created, used to attach UTR
 }
 
 export interface CartItem {

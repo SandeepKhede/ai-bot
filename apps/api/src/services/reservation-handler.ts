@@ -2,7 +2,7 @@ import { prisma } from '@wabot/db'
 import { sendTextMessage } from '@wabot/whatsapp'
 import { getSession, setSession, clearSession, ReservationSession } from './session'
 import { logMessage } from './logger'
-import { safeText, safeButtons } from './wa-send'
+import { safeText, safeButtons, safeCtaUrl } from './wa-send'
 
 type Restaurant = {
   id: string
@@ -10,6 +10,9 @@ type Restaurant = {
   waPhoneNumberId: string
   waAccessToken: string
   whatsappNumber: string
+  utrEnabled: boolean
+  utrUpiId: string | null
+  utrAdvancePaise: number
 }
 
 type Creds = { phoneNumberId: string; accessToken: string }
@@ -98,7 +101,7 @@ export async function handleReservationFlow(
         create: { restaurantId: restaurant.id, whatsappNumber: customerPhone },
       })
 
-      await prisma.reservation.create({
+      const reservation = await prisma.reservation.create({
         data: {
           restaurantId: restaurant.id,
           customerId: customer.id,
@@ -109,6 +112,41 @@ export async function handleReservationFlow(
         },
       })
 
+      // --- UTR advance payment flow ---
+      if (restaurant.utrEnabled && restaurant.utrUpiId) {
+        const amount = restaurant.utrAdvancePaise / 100
+        const tn = `Table advance - ${session.date}`
+
+        // Build the pay page URL (HTTPS required for WhatsApp CTA buttons)
+        const apiBase = process.env.API_PUBLIC_URL ?? `http://localhost:${process.env.PORT ?? 3001}`
+        const payUrl = `${apiBase}/pay?pa=${encodeURIComponent(restaurant.utrUpiId)}&am=${amount}&pn=${encodeURIComponent(restaurant.name)}&tn=${encodeURIComponent(tn)}`
+
+        // Move session to ask_utr stage, store reservationId so we can attach UTR later
+        session.stage = 'ask_utr'
+        session.reservationId = reservation.id
+        await setSession(restaurant.id, customerPhone, session)
+
+        const body =
+          `💳 *Advance Payment Required*\n\n` +
+          `To secure your table at *${restaurant.name}*, please pay *₹${amount}* in advance.\n\n` +
+          `Tap the button below to open your UPI app directly. 👇\n\n` +
+          `After paying, reply with your *UTR / Transaction ID* (12-digit number shown in the payment app).`
+
+        await safeCtaUrl(
+          { phoneNumberId: restaurant.waPhoneNumberId, accessToken: restaurant.waAccessToken },
+          customerPhone,
+          body,
+          `💳 Pay ₹${amount} Now`,
+          payUrl
+        )
+        await logMessage({
+          restaurantId: restaurant.id, customerPhone,
+          direction: 'outbound', content: body, resolvedBy: 'session'
+        })
+        return true
+      }
+
+      // --- Free reservation (UTR disabled) ---
       await clearSession(restaurant.id, customerPhone)
       await send(restaurant, customerPhone,
         `✅ *Reservation confirmed!*\n\nWe'll see you on ${session.date} at ${session.time}.\n\nFor any changes, just message us again. 🙏`)
@@ -135,6 +173,44 @@ export async function handleReservationFlow(
         { id: 'res_no',  title: '❌ Cancel' },
       ]
     )
+    return true
+  }
+
+  // --- Collect UTR after payment ---
+  if (session.stage === 'ask_utr') {
+    const utr = m.replace(/\s+/g, '')
+
+    if (utr.length < 6) {
+      await send(
+        restaurant,
+        customerPhone,
+        `📱 Please send your *UTR / Transaction ID* — it's the 12-digit reference shown in your payment app after paying.`
+      )
+      return true
+    }
+
+    if (session.reservationId) {
+      await prisma.reservation.update({
+        where: { id: session.reservationId },
+        data: { utrNumber: utr },
+      })
+    }
+
+    await clearSession(restaurant.id, customerPhone)
+    await send(
+      restaurant,
+      customerPhone,
+      `✅ *Got it!* UTR *${utr}* noted.\n\nYour reservation is *pending payment verification*.\nWe'll confirm and notify you shortly. 🙏`
+    )
+
+    // Notify owner with UTR so they can verify
+    await sendTextMessage({
+      to: restaurant.whatsappNumber,
+      body: `🔔 *New Reservation + Payment!*\n\n📅 ${session.date} at ${session.time}\n👥 ${session.guests} guests\n📱 From: +${customerPhone}\n💳 UTR: ${utr}\n\n👉 Open your dashboard to verify & confirm.`,
+      phoneNumberId: restaurant.waPhoneNumberId,
+      accessToken: restaurant.waAccessToken,
+    }).catch(() => {})
+
     return true
   }
 

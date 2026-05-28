@@ -22,6 +22,12 @@ export interface ListMessage extends BaseMsg {
   sections: ListSection[]
 }
 
+export interface CtaUrlMessage extends BaseMsg {
+  body: string           // message text shown above the button
+  buttonText: string     // label on the button, max 20 chars
+  url: string            // URL to open when button is tapped (must be https://)
+}
+
 function headers(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
@@ -102,6 +108,34 @@ export async function sendListMessage(msg: ListMessage): Promise<void> {
     )
   } catch (err) {
     logWaError('sendListMessage', err)
+    throw err
+  }
+}
+
+export async function sendCtaUrlMessage(msg: CtaUrlMessage): Promise<void> {
+  try {
+    await axios.post(
+      `${BASE}/${msg.phoneNumberId}/messages`,
+      {
+        messaging_product: 'whatsapp',
+        to: msg.to,
+        type: 'interactive',
+        interactive: {
+          type: 'cta_url',
+          body: { text: msg.body },
+          action: {
+            name: 'cta_url',
+            parameters: {
+              display_text: msg.buttonText.slice(0, 20),
+              url: msg.url,
+            },
+          },
+        },
+      },
+      { headers: headers(msg.accessToken) }
+    )
+  } catch (err) {
+    logWaError('sendCtaUrlMessage', err)
     throw err
   }
 }

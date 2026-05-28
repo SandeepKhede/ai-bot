@@ -6,14 +6,22 @@ export async function PATCH(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { name, address, locationLink, whatsappNumber, botActive, humanHandoff, businessHours, restaurantId } =
+  const { name, address, locationLink, whatsappNumber, botActive, humanHandoff, businessHours,
+          utrEnabled, utrUpiId, utrAdvancePaise, waAccessToken, restaurantId } =
     await req.json()
 
   if (restaurantId !== session.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const restaurant = await prisma.restaurant.update({
     where: { id: restaurantId },
-    data: { name, address, locationLink, whatsappNumber, botActive, humanHandoff, businessHours },
+    data: {
+      name, address, locationLink, whatsappNumber, botActive, humanHandoff, businessHours,
+      utrEnabled: utrEnabled ?? false,
+      utrUpiId: utrUpiId ?? null,
+      utrAdvancePaise: utrAdvancePaise ?? 0,
+      // Only update token if a non-empty value is provided
+      ...(waAccessToken?.trim() ? { waAccessToken: waAccessToken.trim() } : {}),
+    },
   })
   return NextResponse.json(restaurant)
 }

@@ -8,7 +8,17 @@ export default async function ReservationsPage() {
 
   const reservations = await prisma.reservation.findMany({
     where: { restaurantId },
-    include: { customer: { select: { whatsappNumber: true, name: true } } },
+    select: {
+      id: true,
+      date: true,
+      timeSlot: true,
+      guests: true,
+      status: true,
+      utrNumber: true,
+      utrVerified: true,
+      createdAt: true,
+      customer: { select: { whatsappNumber: true, name: true } },
+    },
     orderBy: { createdAt: 'desc' },
     take: 50,
   })

@@ -18,6 +18,10 @@ type Restaurant = {
   humanHandoff: boolean
   whatsappNumber: string
   waPhoneNumberId: string
+  waAccessToken: string
+  utrEnabled: boolean
+  utrUpiId: string | null
+  utrAdvancePaise: number
 }
 
 export default function SettingsClient({ restaurant, restaurantId }: { restaurant: Restaurant; restaurantId: string }) {
@@ -29,10 +33,16 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
     whatsappNumber: restaurant.whatsappNumber,
     botActive: restaurant.botActive,
     humanHandoff: restaurant.humanHandoff,
+    utrEnabled: restaurant.utrEnabled,
+    utrUpiId: restaurant.utrUpiId ?? '',
+    utrAdvancePaise: restaurant.utrAdvancePaise,
   })
   const [hours, setHours] = useState<Record<string, string>>(
     (restaurant.businessHours as Record<string, string>) ?? {}
   )
+  // waAccessToken — blank means "don't change", populated means "update to this"
+  const [newToken, setNewToken] = useState('')
+  const [showToken, setShowToken] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [handoffLoading, setHandoffLoading] = useState(false)
@@ -67,10 +77,20 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
     await fetch('/api/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: form.name, address: form.address, locationLink: form.locationLink, whatsappNumber: form.whatsappNumber, botActive: form.botActive, businessHours: hours, restaurantId }),
+      body: JSON.stringify({
+        name: form.name, address: form.address, locationLink: form.locationLink,
+        whatsappNumber: form.whatsappNumber, botActive: form.botActive,
+        businessHours: hours, restaurantId,
+        utrEnabled: form.utrEnabled,
+        utrUpiId: form.utrUpiId || null,
+        utrAdvancePaise: form.utrAdvancePaise,
+        // Only sent when the owner has typed a new token — blank = keep existing
+        ...(newToken.trim() ? { waAccessToken: newToken.trim() } : {}),
+      }),
     })
     setSaving(false)
     setSaved(true)
+    setNewToken('')   // clear the token field — it's been saved
     setTimeout(() => setSaved(false), 2000)
     router.refresh()
   }
@@ -158,11 +178,130 @@ export default function SettingsClient({ restaurant, restaurantId }: { restauran
         </div>
       </div>
 
-      {/* WhatsApp Info (read-only) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
-        <h2 className="font-semibold text-gray-900 mb-3">WhatsApp Info</h2>
-        <div className="text-sm text-gray-500">
-          Phone Number ID: <span className="font-mono text-gray-700">{restaurant.waPhoneNumberId}</span>
+      {/* Reservation Payments (UTR) */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">Reservation Advance Payment</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            When enabled, customers must pay an advance via UPI and share their UTR/Transaction ID before the reservation is confirmed.
+          </p>
+        </div>
+
+        {/* Toggle */}
+        <label className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-gray-700">Require advance payment</div>
+            <div className="text-xs text-gray-400">Customers pay UPI advance and submit UTR</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm(f => ({ ...f, utrEnabled: !f.utrEnabled }))}
+            className={`relative w-11 h-6 rounded-full transition ${form.utrEnabled ? 'bg-green-500' : 'bg-gray-300'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${form.utrEnabled ? 'translate-x-5' : ''}`} />
+          </button>
+        </label>
+
+        {/* UPI details — only shown when toggle is ON */}
+        {form.utrEnabled && (
+          <div className="space-y-3 pt-1 border-t border-gray-100">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Your UPI ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                value={form.utrUpiId}
+                onChange={e => setForm(f => ({ ...f, utrUpiId: e.target.value }))}
+                placeholder="yourname@okaxis"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Must be a full UPI VPA — e.g. <span className="font-mono">9876543210@ybl</span> (PhonePe),{' '}
+                <span className="font-mono">name@okicici</span>, <span className="font-mono">name@axl</span>.{' '}
+                A phone number alone won't work — open any UPI app → Profile → copy your UPI ID.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Advance amount (₹) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min={1}
+                value={form.utrAdvancePaise / 100}
+                onChange={e => setForm(f => ({ ...f, utrAdvancePaise: Math.round(parseFloat(e.target.value || '0') * 100) }))}
+                placeholder="400"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+              <p className="text-xs text-gray-400 mt-1">Amount customers pay to secure their table</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+              <strong>How it works:</strong> After customers confirm a reservation, the bot sends your UPI ID and asks them to pay ₹{form.utrAdvancePaise / 100 || '—'}. They reply with their UTR number. You then verify in the <strong>Reservations</strong> dashboard and click <em>Verify &amp; Confirm</em>.
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* WhatsApp Credentials */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="font-semibold text-gray-900">WhatsApp Credentials</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Update your access token whenever Meta rotates it (every 24 h for temporary tokens).
+            Leave blank to keep the current token.
+          </p>
+        </div>
+
+        {/* Phone Number ID — read-only */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number ID</label>
+          <input
+            readOnly
+            value={restaurant.waPhoneNumberId}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed font-mono"
+          />
+        </div>
+
+        {/* Current token preview */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Current Access Token</label>
+          <div className="flex items-center gap-2">
+            <input
+              readOnly
+              type={showToken ? 'text' : 'password'}
+              value={restaurant.waAccessToken}
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 cursor-not-allowed font-mono"
+            />
+            <button
+              type="button"
+              onClick={() => setShowToken(v => !v)}
+              className="text-xs px-2.5 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 transition shrink-0"
+            >
+              {showToken ? 'Hide' : 'Show'}
+            </button>
+          </div>
+        </div>
+
+        {/* New token input */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            New Access Token <span className="text-gray-400 font-normal">(paste new token here to update)</span>
+          </label>
+          <input
+            value={newToken}
+            onChange={e => setNewToken(e.target.value)}
+            placeholder="Paste new token from Meta Developer Console…"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 font-mono"
+          />
+          {newToken.trim() && (
+            <p className="text-xs text-green-600 mt-1">✓ New token will be saved when you click "Save Changes"</p>
+          )}
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+          <strong>Where to get your token:</strong> Meta Developer Console →
+          your app → WhatsApp → API Setup → copy the <em>Temporary access token</em> (24 h) or generate
+          a <em>System User token</em> (permanent) under Business Settings → System Users.
         </div>
       </div>
 

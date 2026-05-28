@@ -22,9 +22,16 @@ model Restaurant {
   plan            Plan     @default(STARTER)
   botActive       Boolean  @default(true)
   humanHandoff    Boolean  @default(false)
-  monthlyAiCalls  Int      @default(0)
-  aiCallsResetAt  DateTime @default(now())
-  createdAt       DateTime @default(now())
+  utrEnabled      Boolean  @default(false)
+  utrUpiId        String?
+  utrAdvancePaise Int      @default(0)
+  monthlyAiCalls         Int      @default(0)
+  aiCallsResetAt         DateTime @default(now())
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+  subscriptionStatus     String?  // created | authenticated | active | pending | halted | cancelled | completed | expired
+  planRenewsAt           DateTime?
+  createdAt              DateTime @default(now())
 
   customers    Customer[]
   menuItems    MenuItem[]
@@ -83,6 +90,8 @@ model Reservation {
   timeSlot     String
   guests       Int
   status       ReservationStatus @default(PENDING)
+  utrNumber    String?
+  utrVerified  Boolean           @default(false)
   createdAt    DateTime          @default(now())
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id])
