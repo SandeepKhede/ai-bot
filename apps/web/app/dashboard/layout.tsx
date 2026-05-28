@@ -2,6 +2,7 @@ import { auth } from '@/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import Sidebar from '@/components/Sidebar'
+import TopHeader from '@/components/TopHeader'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -9,15 +10,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { id: session.user.id },
-    select: { name: true, setupComplete: true },
+    select: { name: true, setupComplete: true, botActive: true },
   })
 
   if (!restaurant?.setupComplete) redirect('/setup')
 
+  const name = restaurant?.name ?? 'My Restaurant'
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar restaurantName={restaurant?.name ?? 'My Restaurant'} />
-      <main className="flex-1 p-8 overflow-auto">{children}</main>
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
+      <Sidebar restaurantName={name} />
+
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <TopHeader restaurantName={name} botActive={restaurant?.botActive ?? true} />
+        <main className="flex-1 overflow-auto p-8">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
